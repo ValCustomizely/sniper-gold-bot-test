@@ -1,0 +1,9 @@
+services:
+  - type: worker
+    name: gold-sniper-worker
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: pytest tests/
+    startCommand: python main.py
+    autoDeploy: true
