@@ -1,5 +1,5 @@
 """
-Détecteur de signaux avancé avec système multi-pivots
+Détecteur de signaux avancé avec système multi-pivots et améliorations strategiques
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -8,17 +8,19 @@ from .logger import Logger
 from .pivot_state_manager import PivotStateManager, PivotType, BreakoutState
 from .pivot_session_manager import PivotSessionManager
 from .breakout_validator import BreakoutValidator
+from .temporal_context_manager import TemporalContextManager
 
 logger = Logger()
 
 class EnhancedSignalDetector:
-    """Détecteur de signaux avec logique multi-pivots avancée"""
+    """Détecteur de signaux avec logique multi-pivots avancée et améliorations strategiques"""
     
     def __init__(self, pivot_state_manager: PivotStateManager, session_manager: PivotSessionManager):
         self.config = Config()
         self.state_manager = pivot_state_manager
         self.session_manager = session_manager
         self.breakout_validator = BreakoutValidator(pivot_state_manager)
+        self.temporal_context = TemporalContextManager()  # Nouveau
     
     async def detect_signals(self, current_price: float) -> Optional[Dict[str, Any]]:
         """Point d'entrée principal pour la détection de signaux"""
