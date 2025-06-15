@@ -32,7 +32,7 @@ class Config:
         required_keys = [
             "NOTION_API_KEY", 
             "NOTION_DATABASE_ID_TEST", 
-            "SEUILS_DATABASE_ID_TES", 
+            "SEUILS_DATABASE_ID_TEST", 
             "POLYGON_API_KEY"
         ]
         
