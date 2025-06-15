@@ -145,4 +145,27 @@ class SignalDetector:
             "is_strong": counter >= self.config.MIN_CONFIRMATIONS
         }
     
-    def calculate_
+    def calculate_trading_levels(self, signal: Dict[str, Any], current_price: float, pivot: Optional[float]) -> Dict[str, Any]:
+        """Calcule les niveaux de trading (SL, TP, etc.)"""
+        if not signal.get("broken_threshold"):
+            return {}
+        
+        broken_threshold = signal["broken_threshold"]
+        direction = signal["direction"]
+        
+        levels = {}
+        
+        # Stop Loss
+        if direction == "resistance":
+            levels["sl"] = round(broken_threshold - self.config.SL_OFFSET, 2)
+            levels["trailing_sl"] = round(current_price + self.config.TRAILING_SL_OFFSET, 2)
+        else:  # support
+            levels["sl"] = round(broken_threshold + self.config.SL_OFFSET, 2)
+            levels["trailing_sl"] = round(current_price - self.config.TRAILING_SL_OFFSET, 2)
+        
+        # Take Profit
+        if pivot is not None:
+            tp = broken_threshold + (broken_threshold - pivot) * self.config.TP_MULTIPLIER
+            levels["tp"] = round(tp, 2)
+        
+        return levels
