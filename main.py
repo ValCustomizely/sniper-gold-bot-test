@@ -106,7 +106,84 @@ class GoldTradingBot:
             signal = await self.signal_detector.detect_signals(current_price)
             
             if signal:
-                # Log du stat"""
+                # Log du statut du système
+                status = self.signal_detector.get_status_summary()
+                logger.info(f"Signal détecté: {signal['type']} | Pivot: {status['pivot_actif']} | État: {status['etat_cassure']}")
+                
+                # Sauvegarder le signal avec les informations avancées
+                await self._save_advanced_signal(signal, current_price, volume)
+                
+        except Exception as e:
+            logger.error(f"Erreur traitement données: {e}")
+
+    async def _save_advanced_signal(self, signal: Dict[str, Any], current_price: float, volume: int):
+        """Sauvegarde un signal avec toutes les informations avancées"""
+        try:
+            # Construire les niveaux de trading
+            trading_levels = signal.get("trading_levels", {})
+            
+            # Ajouter des métadonnées avancées au commentaire
+            metadata = [
+                f"Pivot actif: {signal.get('pivot_actif', 'N/A')}",
+                f"Session: {signal.get('session', 'N/A')}",
+                f"État: {signal.get('etat_cassure', 'N/A')}"
+            ]
+            
+            if signal.get("is_fast"):
+                metadata.append("Cassure rapide ⚡")
+            
+            if signal.get("stabilization_time"):
+                metadata.append(f"Stabilisation: {signal['stabilization_time']:.1f}min")
+            
+            comment = "Signal avancé | " + " | ".join(metadata)
+            
+            # Sauvegarder dans Notion
+            await self.notion_manager.save_signal(signal, current_price, volume, trading_levels, comment)
+            
+        except Exception as e:
+            logger.error(f"Erreur sauvegarde signal avancé: {e}")
+
+    async def run_cycle(self):
+        """Execute un cycle complet du bot"""
+        # Mise à jour automatique des seuils si nécessaire (compatibilité)
+        if await self.should_update_thresholds():
+            await self.update_automatic_thresholds()
+        
+        # Traitement des données courantes avec système avancé
+        await self.process_current_data()
+
+    async def start(self):
+        """Démarre la boucle principale du bot"""
+        logger.info("🚀 Démarrage du bot de trading or AVANCÉ")
+        logger.info("📊 Système multi-pivots activé (Classique/Asie/Europe)")
+        
+        # Afficher l'état initial
+        status = self.signal_detector.get_status_summary()
+        logger.info(f"État initial - Pivot: {status['pivot_actif']} | Switches: {status['switches_count']}/2")
+        
+        while True:
+            try:
+                await self.run_cycle()
+                await asyncio.sleep(60)  # Attendre 1 minute
+                
+            except KeyboardInterrupt:
+                logger.info("Arrêt du bot demandé")
+                break
+            except Exception as e:
+                logger.error(f"Erreur dans la boucle principale: {e}")
+                await asyncio.sleep(60)  # Attendre avant de relancer
+
+async def main():
+    """Point d'entrée principal"""
+    bot = GoldTradingBot()
+    await bot.start()
+
+if __name__ == "__main__":
+    logger.info(f"[BOOT] Bot Trading Or Avancé - {datetime.utcnow().isoformat()}")
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        logger.error(f"Erreur critique bot: {e}")"""
 Bot de trading or - Version refactorisée
 Point d'entrée principal
 """
