@@ -20,10 +20,19 @@ class TestPivotStateManager:
     def state_manager(self):
         """Instance du gestionnaire d'état pivot"""
         with patch('src.pivot_state_manager.Config') as mock_config:
-            mock_config.return_value.PIVOT_STATE_FILE = "test_pivot_state.json"
-            mock_config.return_value.MAX_DAILY_SWITCHES = 2
-            mock_config.return_value.TENSION_WINDOW = 30
-            mock_config.return_value.TENSION_TOUCHES = 3
+            # Configurer tous les attributs nécessaires
+            config_instance = mock_config.return_value
+            config_instance.PIVOT_STATE_FILE = "test_pivot_state.json"
+            config_instance.MAX_DAILY_SWITCHES = 2
+            config_instance.TENSION_WINDOW = 30
+            config_instance.TENSION_TOUCHES = 3
+            config_instance.ASIA_SESSION_START = 0
+            config_instance.ASIA_SESSION_END = 4
+            config_instance.EUROPE_SESSION_START = 4
+            config_instance.EUROPE_SESSION_END = 13
+            config_instance.US_SESSION_START = 13
+            config_instance.US_SESSION_END = 23
+            
             return PivotStateManager()
     
     def test_default_state_creation(self, state_manager):
@@ -130,12 +139,14 @@ class TestBreakoutValidator:
     
     def test_volatility_check(self, validator):
         """Test de vérification de volatilité"""
-        # Ajouter des prix très volatils
+        # Ajouter des prix très volatils sur 1 heure
         base_time = datetime.utcnow()
-        prices = [3400, 3440, 3380, 3450, 3370]  # Très volatil
+        # Prix avec 3% de variation (> 1% threshold)
+        prices = [3400, 3450, 3380, 3470, 3360]  # Range de 110$ sur prix moyen 3412 = 3.2%
         
         for i, price in enumerate(prices):
-            timestamp = base_time - timedelta(minutes=i*10)
+            # Étaler sur 1 heure
+            timestamp = base_time - timedelta(minutes=i*12)
             validator.add_price_point(price, timestamp)
         
         is_volatile = validator.check_volatility()
@@ -150,6 +161,8 @@ class TestEnhancedSignalDetector:
         mock.get_active_pivot.return_value = PivotType.CLASSIC
         mock.get_breakout_state.return_value = BreakoutState.NONE
         mock.can_switch_pivot.return_value = True
+        # Ajouter l'attribut current_state comme un dict
+        mock.current_state = {"switches_count": 0}
         return mock
     
     @pytest.fixture  
