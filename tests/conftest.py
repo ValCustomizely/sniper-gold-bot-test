@@ -1,5 +1,5 @@
 """
-Configuration pytest globale
+Configuration pytest globale avec support des nouvelles fonctionnalités
 """
 import pytest
 from unittest.mock import patch
@@ -44,4 +44,58 @@ def mock_config():
         config_instance.US_SESSION_START = 13
         config_instance.US_SESSION_END = 23
         
+        # Calculs de pivots
+        config_instance.CLASSIC_CALC_HOUR = 23
+        config_instance.ASIA_CALC_HOUR = 4
+        config_instance.EUROPE_CALC_HOUR = 13
+        config_instance.CALC_MINUTE_OFFSET = 3
+        
         yield config_instance
+
+@pytest.fixture
+def sample_ohlc_data():
+    """Données OHLC d'exemple pour les tests"""
+    return {
+        "high": 3420.0,
+        "low": 3380.0, 
+        "close": 3400.0,
+        "open": 3390.0,
+        "volume": 1500,
+        "timestamp": 1718467200000
+    }
+
+@pytest.fixture  
+def sample_thresholds_with_reliability():
+    """Seuils avec informations de fiabilité pour les tests"""
+    return [
+        {
+            "nom": "R2_classique", 
+            "valeur": 3415.0, 
+            "type": "résistance",
+            "pivot_type": "classique"
+        },
+        {
+            "nom": "R1_classique", 
+            "valeur": 3410.0, 
+            "type": "résistance",
+            "pivot_type": "classique"
+        },
+        {
+            "nom": "Pivot_classique", 
+            "valeur": 3400.0, 
+            "type": "pivot",
+            "pivot_type": "classique"
+        },
+        {
+            "nom": "S1_classique", 
+            "valeur": 3390.0, 
+            "type": "support",
+            "pivot_type": "classique"
+        },
+        {
+            "nom": "S2_classique", 
+            "valeur": 3385.0, 
+            "type": "support",
+            "pivot_type": "classique"
+        }
+    ]
