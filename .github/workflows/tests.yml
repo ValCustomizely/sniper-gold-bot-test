@@ -53,15 +53,27 @@ jobs:
         pip install flake8
         flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Test success confirmation
+      run: |
+        echo "✅ All tests passed successfully!"
+        echo "✅ Code quality checks passed!"
+        echo "🔓 Ready for deployment pipeline!"
 
   deploy:
-    needs: test
+    needs: [test, security]  # Attendre que test ET security passent
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && success()  # Déployer seulement si tout est OK
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+    
+    - name: Validate deployment readiness
+      run: |
+        echo "✅ Tests passed successfully"
+        echo "✅ Security checks passed"
+        echo "🚀 Ready for deployment to Render"
     
     - name: Deploy to Render
       uses: johnbeynon/render-deploy-action@v0.0.8
@@ -69,6 +81,20 @@ jobs:
         service-id: ${{ secrets.RENDER_SERVICE_ID }}
         api-key: ${{ secrets.RENDER_API_KEY }}
         wait-for-success: true
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+    
+    - name: Deployment success notification
+      if: success()
+      run: |
+        echo "🎉 Deployment to Render completed successfully!"
+        echo "Bot version with all tests passing is now live."
+    
+    - name: Deployment failure notification  
+      if: failure()
+      run: |
+        echo "❌ Deployment to Render failed!"
+        echo "Check Render logs for details."
 
   security:
     runs-on: ubuntu-latest
