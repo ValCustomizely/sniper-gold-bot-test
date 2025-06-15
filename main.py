@@ -188,7 +188,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as e:
-        logger.error(f"Erreur critique bot: {e}")"""
+        logger.error(f"Erreur critique bot: {e}")
 Bot de trading or - Version refactorisée
 Point d'entrée principal
 """
