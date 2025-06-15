@@ -1,4 +1,112 @@
 """
+Bot de trading or - Version avancée multi-pivots
+Point d'entrée principal
+"""
+import asyncio
+import os
+from datetime import datetime
+from src.config import Config
+from src.api_client import PolygonClient
+from src.notion_client import NotionManager
+from src.enhanced_signal_detector import EnhancedSignalDetector
+from src.threshold_manager import ThresholdManager
+from src.pivot_state_manager import PivotStateManager
+from src.pivot_session_manager import PivotSessionManager
+from src.state_manager import StateManager
+from src.logger import Logger
+
+logger = Logger()
+
+class GoldTradingBot:
+    def __init__(self):
+        self.config = Config()
+        self.config.validate()
+        
+        # Clients API
+        self.polygon_client = PolygonClient(self.config.POLYGON_API_KEY)
+        self.notion_manager = NotionManager(
+            self.config.NOTION_API_KEY, 
+            self.config.NOTION_DATABASE_ID, 
+            self.config.SEUILS_DATABASE_ID
+        )
+        
+        # Gestionnaires d'état et de sessions
+        self.pivot_state_manager = PivotStateManager()
+        self.session_manager = PivotSessionManager(self.polygon_client)
+        self.threshold_manager = ThresholdManager(self.notion_manager)
+        self.state_manager = StateManager()  # Gardé pour compatibilité
+        
+        # Détecteur de signaux avancé
+        self.signal_detector = EnhancedSignalDetector(
+            self.pivot_state_manager, 
+            self.session_manager
+        )
+        
+        self.last_updates = set()
+
+    async def should_update_thresholds(self):
+        """Vérifie s'il faut mettre à jour les seuils automatiquement"""
+        now = datetime.utcnow()
+        today = now.date().isoformat()
+        update_key = f"{today}_1"
+        
+        # Mise à jour automatique à 1h (maintenue pour les pivots classiques de base)
+        if now.hour == 1 and update_key not in self.last_updates:
+            self.last_updates.add(update_key)
+            return True
+        
+        # Vérification de sécurité : si pas de seuils pour aujourd'hui
+        await self.threshold_manager.load_daily_thresholds()
+        if not self.threshold_manager.get_thresholds():
+            logger.warning(f"Aucun seuil trouvé pour {today}, génération automatique")
+            return True
+            
+        return False
+
+    async def update_automatic_thresholds(self):
+        """Met à jour les seuils automatiquement basés sur les données de la veille"""
+        try:
+            logger.info("Mise à jour automatique des seuils (compatibilité)")
+            
+            # Récupérer les données de la dernière session
+            last_day_data = await self.polygon_client.get_last_trading_day_data()
+            if not last_day_data:
+                logger.warning("Aucune donnée trouvée pour la dernière session")
+                return False
+
+            # Calculer les nouveaux seuils
+            thresholds = self.threshold_manager.calculate_pivot_points(last_day_data)
+            if not thresholds:
+                logger.error("Impossible de calculer les seuils")
+                return False
+            
+            # Sauvegarder dans Notion
+            await self.notion_manager.save_thresholds(thresholds)
+            
+            logger.info(f"Seuils mis à jour: {len(thresholds)} seuils sauvegardés")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erreur mise à jour seuils auto: {e}")
+            return False
+
+    async def process_current_data(self):
+        """Traite les données actuelles et génère les signaux"""
+        try:
+            # Récupérer le prix actuel
+            current_data = await self.polygon_client.get_current_minute_data()
+            if not current_data:
+                logger.warning("Pas de données minute disponibles")
+                return
+
+            current_price = current_data["close"]
+            volume = current_data["volume"]
+            
+            # Détecter les signaux avec le système avancé
+            signal = await self.signal_detector.detect_signals(current_price)
+            
+            if signal:
+                # Log du stat"""
 Bot de trading or - Version refactorisée
 Point d'entrée principal
 """
