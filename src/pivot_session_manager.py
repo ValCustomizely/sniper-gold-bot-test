@@ -215,8 +215,88 @@ class PivotSessionManager:
         """Retourne tous les pivots en cache"""
         return {k: v for k, v in self.cached_pivots.items() if v is not None}
     
-    def clear_cache(self):
-        """Vide le cache des pivots"""
-        self.cached_pivots = {pivot_type: None for pivot_type in PivotType}
-        self.last_calculation_times.clear()
-        logger.info("Cache des pivots vidé")
+    def is_pivot_switch_meaningful(self, new_pivot_type: PivotType, current_pivot_type: PivotType) -> Tuple[bool, str]:
+        """Vérifie si une bascule de pivot apporte une vraie valeur stratégique"""
+        new_pivots = self.get_cached_pivots(new_pivot_type)
+        current_pivots = self.get_cached_pivots(current_pivot_type)
+        
+        if not new_pivots or not current_pivots:
+            return False, "Pivots manquants pour comparaison"
+        
+        # Extraire les niveaux clés pour comparaison
+        new_levels = self._extract_key_levels(new_pivots)
+        current_levels = self._extract_key_levels(current_pivots)
+        
+        # Vérifier les différences significatives
+        r2_diff = abs(new_levels["R2"] - current_levels["R2"])
+        s2_diff = abs(new_levels["S2"] - current_levels["S2"])
+        pivot_diff = abs(new_levels["Pivot"] - current_levels["Pivot"])
+        
+        min_meaningful_diff = 5.0  # Différence minimum en dollars
+        
+        # Au moins un niveau clé doit avoir une différence significative
+        if max(r2_diff, s2_diff, pivot_diff) < min_meaningful_diff:
+            return False, f"Différences insuffisantes: R2={r2_diff:.1f}$, S2={s2_diff:.1f}$, Pivot={pivot_diff:.1f}$"
+        
+        # Vérifier que les nouveaux pivots ne sont pas "inclus" dans les anciens
+        if self._is_range_included(new_levels, current_levels):
+            return False, "Nouveaux pivots inclus dans l'ancien range"
+        
+        return True, f"Bascule justifiée - Différences: R2={r2_diff:.1f}$, S2={s2_diff:.1f}$"
+    
+    def _extract_key_levels(self, pivots: List[Dict[str, Any]]) -> Dict[str, float]:
+        """Extrait les niveaux clés d'un jeu de pivots"""
+        levels = {}
+        for pivot in pivots:
+            if pivot["nom"].startswith("R2"):
+                levels["R2"] = pivot["valeur"]
+            elif pivot["nom"].startswith("S2"):
+                levels["S2"] = pivot["valeur"]
+            elif pivot["nom"].startswith("Pivot"):
+                levels["Pivot"] = pivot["valeur"]
+        return levels
+    
+    def _is_range_included(self, new_levels: Dict[str, float], current_levels: Dict[str, float]) -> bool:
+        """Vérifie si le nouveau range est inclus dans l'ancien"""
+        # Range des nouveaux pivots
+        new_range = new_levels["R2"] - new_levels["S2"]
+        # Range des pivots actuels  
+        current_range = current_levels["R2"] - current_levels["S2"]
+        
+        # Si le nouveau range est plus petit ET centré dans l'ancien
+        if new_range < current_range * 0.8:  # 20% plus petit
+            new_center = (new_levels["R2"] + new_levels["S2"]) / 2
+            current_center = (current_levels["R2"] + current_levels["S2"]) / 2
+            center_diff = abs(new_center - current_center)
+            
+            # Centre proche = range inclus
+            return center_diff < current_range * 0.3
+        
+        return False
+    
+    def validate_session_data_quality(self, pivot_type: PivotType, ohlc_data: Dict[str, Any]) -> Tuple[bool, str]:
+        """Valide la qualité des données de session pour éviter des pivots dérivés"""
+        if not ohlc_data:
+            return False, "Aucune donnée disponible"
+        
+        session_range = ohlc_data["high"] - ohlc_data["low"]
+        session_volume = ohlc_data.get("volume", 0)
+        
+        # Critères de qualité selon le type de session
+        quality_criteria = {
+            PivotType.CLASSIC: {"min_range": 8.0, "min_volume": 1000},
+            PivotType.ASIA: {"min_range": 6.0, "min_volume": 500},
+            PivotType.EUROPE: {"min_range": 10.0, "min_volume": 1500}
+        }
+        
+        criteria = quality_criteria.get(pivot_type, quality_criteria[PivotType.CLASSIC])
+        
+        # Vérification du range
+        if session_range < criteria["min_range"]:
+            return False, f"Range insuffisant: {session_range:.2f}$ < {criteria['min_range']}$ requis"
+        
+        # Vérification du volume (si disponible)
+        if session_volume > 0 and session_volume < criteria["min_volume"]:
+            logger.warning(f"Volume faible détecté: {session_volume} < {criteria['min_volume']}")
+        
+        return True, f"Données de qualité - Range: {session_range:.2f}$, Volume: {session_volume}"
