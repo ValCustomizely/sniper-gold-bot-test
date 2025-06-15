@@ -300,3 +300,9 @@ class PivotSessionManager:
             logger.warning(f"Volume faible détecté: {session_volume} < {criteria['min_volume']}")
         
         return True, f"Données de qualité - Range: {session_range:.2f}$, Volume: {session_volume}"
+    
+    def clear_cache(self):
+        """Vide le cache des pivots"""
+        self.cached_pivots = {pivot_type: None for pivot_type in PivotType}
+        self.last_calculation_times.clear()
+        logger.info("Cache des pivots vidé")
