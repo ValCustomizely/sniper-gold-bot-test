@@ -15,6 +15,7 @@ class Config:
     POLYGON_API_KEY: str = os.environ.get("POLYGON_API_KEY", "")
     
     # Trading - Système multi-pivots
+    BREAKOUT_THRESHOLD: float = 0.5      # Legacy - pour compatibilité anciens tests
     BREAKOUT_AMPLITUDE: float = 2.0      # Amplitude de cassure en dollars (R2/S2 + 2$)
     RESET_THRESHOLD: float = 0.2         # Seuil de reset en dollars
     MIN_CONFIRMATIONS: int = 5           # Nombre de confirmations pour signal fort
