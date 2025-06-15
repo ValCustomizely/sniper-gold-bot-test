@@ -1,8 +1,8 @@
 httpx==0.28.1
 notion-client==2.3.0
 beautifulsoup4==4.12.3
-pandas>=2.1.0
-numpy==1.26.4
+pandas>=2.2.0
+numpy>=1.26.0
 requests
 python-dotenv
 pytest
