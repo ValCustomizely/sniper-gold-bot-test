@@ -70,8 +70,8 @@ class NotionManager:
             logger.error(f"Erreur récupération seuils Notion: {e}")
             return []
     
-    async def save_signal(self, signal: Dict[str, Any], current_price: float, volume: int, trading_levels: Dict[str, Any]):
-        """Sauvegarde un signal dans Notion"""
+    async def save_signal(self, signal: Dict[str, Any], current_price: float, volume: int, trading_levels: Dict[str, Any], comment: str = "Signal via Polygon.io"):
+        """Sauvegarde un signal dans Notion avec support avancé"""
         try:
             now = datetime.utcnow()
             
@@ -89,7 +89,7 @@ class NotionManager:
                     "number": int(volume)
                 },
                 "Commentaire": {
-                    "rich_text": [{"text": {"content": "Signal via Polygon.io"}}]
+                    "rich_text": [{"text": {"content": comment}}]
                 }
             }
             
@@ -103,12 +103,16 @@ class NotionManager:
             if "tp" in trading_levels:
                 properties["TP"] = {"number": trading_levels["tp"]}
             
+            # Ajouter un deuxième objectif si disponible
+            if "target_2" in trading_levels:
+                properties["TP2"] = {"number": trading_levels["target_2"]}
+            
             self.client.pages.create(
                 parent={"database_id": self.signals_db_id},
                 properties=properties
             )
             
-            logger.info(f"Signal sauvegardé dans Notion: {signal['type']}")
+            logger.info(f"Signal avancé sauvegardé dans Notion: {signal['type']}")
             
         except Exception as e:
             logger.error(f"Erreur sauvegarde signal Notion: {e}")
