@@ -32,11 +32,20 @@ class GoldTradingBot:
     async def should_update_thresholds(self):
         """Vérifie s'il faut mettre à jour les seuils automatiquement"""
         now = datetime.utcnow()
-        update_key = f"{now.date().isoformat()}_1"
+        today = now.date().isoformat()
+        update_key = f"{today}_1"
         
+        # Mise à jour automatique à 1h
         if now.hour == 1 and update_key not in self.last_updates:
             self.last_updates.add(update_key)
             return True
+        
+        # Vérification de sécurité : si pas de seuils pour aujourd'hui
+        await self.threshold_manager.load_daily_thresholds()
+        if not self.threshold_manager.get_thresholds():
+            logger.warning(f"Aucun seuil trouvé pour {today}, génération automatique")
+            return True
+            
         return False
 
     async def update_automatic_thresholds(self):
@@ -48,18 +57,23 @@ class GoldTradingBot:
             last_day_data = await self.polygon_client.get_last_trading_day_data()
             if not last_day_data:
                 logger.warning("Aucune donnée trouvée pour la dernière session")
-                return
+                return False
 
             # Calculer les nouveaux seuils
             thresholds = self.threshold_manager.calculate_pivot_points(last_day_data)
+            if not thresholds:
+                logger.error("Impossible de calculer les seuils")
+                return False
             
             # Sauvegarder dans Notion
             await self.notion_manager.save_thresholds(thresholds)
             
             logger.info(f"Seuils mis à jour: {len(thresholds)} seuils sauvegardés")
+            return True
             
         except Exception as e:
             logger.error(f"Erreur mise à jour seuils auto: {e}")
+            return False
 
     async def process_current_data(self):
         """Traite les données actuelles et génère les signaux"""
