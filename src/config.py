@@ -10,8 +10,8 @@ class Config:
     
     # APIs
     NOTION_API_KEY: str = os.environ.get("NOTION_API_KEY", "")
-    NOTION_DATABASE_ID: str = os.environ.get("NOTION_DATABASE_ID", "")
-    SEUILS_DATABASE_ID: str = os.environ.get("SEUILS_DATABASE_ID", "")
+    NOTION_DATABASE_ID: str = os.environ.get("NOTION_DATABASE_ID_TEST", "")
+    SEUILS_DATABASE_ID: str = os.environ.get("SEUILS_DATABASE_ID_TEST", "")
     POLYGON_API_KEY: str = os.environ.get("POLYGON_API_KEY", "")
     
     # Trading
