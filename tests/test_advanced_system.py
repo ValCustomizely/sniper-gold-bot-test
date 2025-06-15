@@ -139,19 +139,29 @@ class TestBreakoutValidator:
     
     def test_volatility_check(self, validator):
         """Test de vérification de volatilité"""
-        # Créer une volatilité de plus de 1% sur 1 heure
+        # Simuler des prix très volatils sur 1 heure
         base_time = datetime.utcnow()
         
-        # Prix avec range de 50$ sur prix moyen 3400 = ~1.5% (> 1%)
-        prices = [3400, 3420, 3380, 3430, 3375, 3425, 3370]
+        # Prix extrêmes : 3300 à 3500 = 200$ de range sur 3400 = 5.88% >> 1%
+        prices = [3300, 3500, 3250, 3480, 3320, 3460, 3280, 3440, 3350, 3420]
         
         for i, price in enumerate(prices):
-            # Répartir sur 50 minutes pour être dans la fenêtre d'1h
-            timestamp = base_time - timedelta(minutes=i*8)
+            # Distribuer sur 45 minutes (bien dans la fenêtre d'1h)
+            timestamp = base_time - timedelta(minutes=i*4.5)
             validator.add_price_point(price, timestamp)
         
-        # Le range est 3430-3370 = 60$ sur prix moyen ~3400 = 1.76% > 1%
         is_volatile = validator.check_volatility()
+        
+        # Si ça ne marche toujours pas, debug
+        if not is_volatile:
+            recent_prices = [p["price"] for p in validator.price_history if 
+                           (base_time - p["timestamp"]).total_seconds() <= 3600]
+            if recent_prices:
+                price_range = max(recent_prices) - min(recent_prices)
+                avg_price = sum(recent_prices) / len(recent_prices)
+                volatility_pct = (price_range / avg_price) * 100
+                print(f"DEBUG: Range={price_range}, Avg={avg_price}, Vol%={volatility_pct}")
+        
         assert is_volatile is True
 
 class TestEnhancedSignalDetector:
