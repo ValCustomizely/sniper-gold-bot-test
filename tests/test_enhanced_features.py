@@ -38,20 +38,23 @@ class TestReliabilityTracking:
         """Test du suivi des résultats de cassures"""
         threshold_name = "R2_classique"
         
-        # Enregistrer 3 tentatives explicitement
+        # S'assurer que le seuil existe avec exactement 3 tentatives
         state_manager.track_breakout_attempt(threshold_name)
-        state_manager.track_breakout_attempt(threshold_name)
+        state_manager.track_breakout_attempt(threshold_name)  
         state_manager.track_breakout_attempt(threshold_name)
         
-        # Enregistrer les résultats (sans tentatives supplémentaires)
-        state_manager.track_breakout_result(threshold_name, True)  # Succès
-        state_manager.track_breakout_result(threshold_name, True)  # Succès  
+        # Vérifier l'état initial
+        initial_stats = state_manager.get_threshold_reliability(threshold_name)
+        assert initial_stats["tentatives"] == 3
+        
+        # Maintenant enregistrer les résultats (sans créer de nouvelles tentatives)
+        state_manager.track_breakout_result(threshold_name, True)   # Succès
+        state_manager.track_breakout_result(threshold_name, True)   # Succès  
         state_manager.track_breakout_result(threshold_name, False)  # Échec
         
         stats = state_manager.get_threshold_reliability(threshold_name)
         
-        # Vérifier que le nombre de tentatives n'a pas été modifié par track_breakout_result
-        # (La méthode track_breakout_result ne devrait pas incrémenter tentatives)
+        # Le nombre de tentatives ne devrait pas avoir changé
         assert stats["tentatives"] == 3
         assert stats["validees"] == 2
         assert stats["invalidees"] == 1
