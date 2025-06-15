@@ -31,8 +31,8 @@ class Config:
         """Valide que toutes les clés API sont présentes"""
         required_keys = [
             "NOTION_API_KEY", 
-            "NOTION_DATABASE_ID", 
-            "SEUILS_DATABASE_ID", 
+            "NOTION_DATABASE_ID_TEST", 
+            "SEUILS_DATABASE_ID_TES", 
             "POLYGON_API_KEY"
         ]
         
