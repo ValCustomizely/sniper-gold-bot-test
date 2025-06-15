@@ -179,7 +179,12 @@ async def main():
     await bot.start()
 
 if __name__ == "__main__":
-    logger.info(f"[BOOT] Bot Trading Or Avancé - {datetime.utcnow().isoformat()}")
+    logger.info(f"[BOOT] Bot Trading Or Avancé v2.0 - {datetime.utcnow().isoformat()}")
+    logger.info("🔧 Améliorations strategiques activées:")
+    logger.info("   • Score de fiabilité par seuil")
+    logger.info("   • Validation contextuelle temporelle")
+    logger.info("   • Revalidation après retour en range") 
+    logger.info("   • Protection contre rebascules inutiles")
     try:
         asyncio.run(main())
     except Exception as e:
