@@ -185,9 +185,16 @@ class GoldTradingBot:
         # Afficher l'état initial enrichi
         status = self.signal_detector.get_status_summary()
         logger.info(f"État initial - Pivot: {status['pivot_actif']} | Switches: {status['switches_count']}/2")
-        logger.info(f"Session: {status['session_context']['session'].upper()} | "
-                   f"Activité: {status['session_context']['activity_level']} | "
-                   f"Critères: {status['session_context']['description']}")
+        
+        # Vérifier si session_context existe avant de l'utiliser
+        if 'session_context' in status and status['session_context']:
+            session_ctx = status['session_context']
+            logger.info(f"Session: {session_ctx['session'].upper()} | "
+                       f"Activité: {session_ctx['activity_level']} | "
+                       f"Critères: {session_ctx['description']}")
+        else:
+            logger.info("Session: Initialisation en cours...")
+            logger.info("Contexte temporel sera disponible au premier cycle")
         
         while True:
             try:
