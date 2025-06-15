@@ -139,16 +139,18 @@ class TestBreakoutValidator:
     
     def test_volatility_check(self, validator):
         """Test de vérification de volatilité"""
-        # Ajouter des prix très volatils sur 1 heure
+        # Créer une volatilité de plus de 1% sur 1 heure
         base_time = datetime.utcnow()
-        # Prix avec 3% de variation (> 1% threshold)
-        prices = [3400, 3450, 3380, 3470, 3360]  # Range de 110$ sur prix moyen 3412 = 3.2%
+        
+        # Prix avec range de 50$ sur prix moyen 3400 = ~1.5% (> 1%)
+        prices = [3400, 3420, 3380, 3430, 3375, 3425, 3370]
         
         for i, price in enumerate(prices):
-            # Étaler sur 1 heure
-            timestamp = base_time - timedelta(minutes=i*12)
+            # Répartir sur 50 minutes pour être dans la fenêtre d'1h
+            timestamp = base_time - timedelta(minutes=i*8)
             validator.add_price_point(price, timestamp)
         
+        # Le range est 3430-3370 = 60$ sur prix moyen ~3400 = 1.76% > 1%
         is_volatile = validator.check_volatility()
         assert is_volatile is True
 
