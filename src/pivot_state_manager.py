@@ -305,7 +305,8 @@ class PivotStateManager:
         """Enregistre le résultat d'une cassure"""
         if threshold_name not in self.current_state.get("seuil_stats", {}):
             logger.warning(f"Tentative de tracker résultat pour seuil non suivi: {threshold_name}")
-            return
+            # Créer l'entrée si elle n'existe pas
+            self.track_breakout_attempt(threshold_name)
         
         stats = self.current_state["seuil_stats"][threshold_name]
         
