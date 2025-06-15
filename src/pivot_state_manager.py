@@ -73,7 +73,14 @@ class PivotStateManager:
             "seuil_en_cours": None,
             "prix_cassure": None,
             "touches_tension": [],
-            "historique": []
+            "historique": [],
+            # Nouveau : statistiques de fiabilité par seuil
+            "seuil_stats": {},
+            # Nouveau : tracking du range pour validation pivot
+            "range_validation": {
+                "in_range_since": None,
+                "last_range_check": None
+            }
         }
     
     def _validate_state(self, state: Dict[str, Any]) -> bool:
@@ -269,3 +276,117 @@ class PivotStateManager:
         event_time = datetime.fromisoformat(timestamp_str)
         cutoff = datetime.utcnow() - timedelta(hours=hours)
         return event_time > cutoff
+    
+    def track_breakout_attempt(self, threshold_name: str):
+        """Enregistre une tentative de cassure"""
+        if "seuil_stats" not in self.current_state:
+            self.current_state["seuil_stats"] = {}
+        
+        if threshold_name not in self.current_state["seuil_stats"]:
+            self.current_state["seuil_stats"][threshold_name] = {
+                "tentatives": 0,
+                "validees": 0,
+                "invalidees": 0,
+                "score": 0.0,
+                "last_update": None
+            }
+        
+        self.current_state["seuil_stats"][threshold_name]["tentatives"] += 1
+        self.current_state["seuil_stats"][threshold_name]["last_update"] = datetime.utcnow().isoformat()
+        
+        self._add_to_history("breakout_attempt", {
+            "threshold": threshold_name,
+            "total_attempts": self.current_state["seuil_stats"][threshold_name]["tentatives"]
+        })
+        
+        self.save_state()
+    
+    def track_breakout_result(self, threshold_name: str, success: bool):
+        """Enregistre le résultat d'une cassure"""
+        if threshold_name not in self.current_state.get("seuil_stats", {}):
+            logger.warning(f"Tentative de tracker résultat pour seuil non suivi: {threshold_name}")
+            return
+        
+        stats = self.current_state["seuil_stats"][threshold_name]
+        
+        if success:
+            stats["validees"] += 1
+        else:
+            stats["invalidees"] += 1
+        
+        # Calculer le score de fiabilité
+        if stats["tentatives"] > 0:
+            stats["score"] = round((stats["validees"] / stats["tentatives"]) * 100, 1)
+        
+        stats["last_update"] = datetime.utcnow().isoformat()
+        
+        self._add_to_history("breakout_result", {
+            "threshold": threshold_name,
+            "success": success,
+            "new_score": stats["score"],
+            "validees": stats["validees"],
+            "tentatives": stats["tentatives"]
+        })
+        
+        logger.info(f"Score fiabilité {threshold_name}: {stats['score']}% ({stats['validees']}/{stats['tentatives']})")
+        self.save_state()
+    
+    def get_threshold_reliability(self, threshold_name: str) -> Dict[str, Any]:
+        """Retourne les statistiques de fiabilité d'un seuil"""
+        if threshold_name in self.current_state.get("seuil_stats", {}):
+            return self.current_state["seuil_stats"][threshold_name].copy()
+        
+        return {
+            "tentatives": 0,
+            "validees": 0,
+            "invalidees": 0,
+            "score": 0.0,
+            "last_update": None
+        }
+    
+    def is_threshold_reliable(self, threshold_name: str, min_attempts: int = 3, min_score: float = 50.0) -> bool:
+        """Vérifie si un seuil est suffisamment fiable pour trader"""
+        stats = self.get_threshold_reliability(threshold_name)
+        
+        # Pas assez de données
+        if stats["tentatives"] < min_attempts:
+            return True  # On donne le bénéfice du doute
+        
+        # Seuil peu fiable
+        return stats["score"] >= min_score
+    
+    def check_range_return(self, current_price: float, r1_value: Optional[float], s1_value: Optional[float]) -> bool:
+        """Vérifie si le prix est retourné durablement dans le range S1-R1"""
+        if not r1_value or not s1_value:
+            return False
+        
+        # Prix dans le range
+        if s1_value <= current_price <= r1_value:
+            now = datetime.utcnow()
+            
+            # Première fois dans le range
+            if not self.current_state.get("range_validation", {}).get("in_range_since"):
+                self.current_state["range_validation"] = {
+                    "in_range_since": now.isoformat(),
+                    "last_range_check": now.isoformat()
+                }
+                self.save_state()
+                return False
+            
+            # Vérifier la durée
+            in_range_since = datetime.fromisoformat(self.current_state["range_validation"]["in_range_since"])
+            duration_minutes = (now - in_range_since).total_seconds() / 60
+            
+            # Retour durable (30+ minutes)
+            if duration_minutes >= 30:
+                logger.info(f"Retour durable en range S1-R1 détecté: {duration_minutes:.1f}min")
+                return True
+        else:
+            # Reset si prix sort du range
+            self.current_state["range_validation"] = {
+                "in_range_since": None,
+                "last_range_check": datetime.utcnow().isoformat()
+            }
+            self.save_state()
+        
+        return False
