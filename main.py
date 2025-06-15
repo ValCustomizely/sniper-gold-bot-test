@@ -21,8 +21,8 @@ class GoldTradingBot:
         self.polygon_client = PolygonClient(self.config.POLYGON_API_KEY)
         self.notion_manager = NotionManager(
             self.config.NOTION_API_KEY, 
-            self.config.NOTION_DATABASE_ID, 
-            self.config.SEUILS_DATABASE_ID
+            self.config.NOTION_DATABASE_ID_TEST, 
+            self.config.SEUILS_DATABASE_ID_TEST
         )
         self.threshold_manager = ThresholdManager(self.notion_manager)
         self.state_manager = StateManager()
